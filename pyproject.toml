@@ -1,15 +1,45 @@
+#:schema https://json.schemastore.org/pyproject.json
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
 [project]
 name = "gititis"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+dynamic = ["version"]
+description = "Software for maintaining git repositories (a fork of gitosis)"
+readme = "README.rst"
 requires-python = ">=3.9"
 dependencies = []
+license = " GPL-2.0-or-later"
+license-files = ["COPYING"]
+authors = [{ name = "Tommi Virtanen", email = "tv@eagain.net" }]
+maintainers = [{ name = "Keith Gaughan", email = "keith@gaughan.ie" }]
+
+[project.urls]
+Documentation = "https://github.com/kgaughan/gititis#readme"
+Issues = "https://github.com/kgaughan/gititis/issues"
+Source = "https://github.com/kgaughan/gititis"
+
+[project.scripts]
+gitosis-serve = "gitosis.serve:Main.run"
+gitosis-run-hook = "gitosis.run_hook:Main.run"
+gitosis-init = "gitosis.init:Main.run"
 
 [dependency-groups]
-dev = [
-    "pytest>=8.4.2",
-]
+dev = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/gitosis", "examples", "uv.lock"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gitosis"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/gitosis/_version.py"
 
 [tool.black]
 line-length = 120
@@ -69,5 +99,28 @@ ban-relative-imports = "all"
 [tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252", "E501"]
-"gitosis/test/**/*" = ["PLR2004", "S101", "TID252", "E501"]
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra --cov=src/gitosis --junitxml=tests/results.xml --cov-report html"
+junit_logging = "out-err"
+junit_family = "xunit2"
+
+[tool.coverage.run]
+branch = true
+parallel = true
+omit = []
+
+[tool.coverage.report]
+ignore_errors = true
+# Regexes for lines to exclude from consideration
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "pass",
+]

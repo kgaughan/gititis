@@ -2,7 +2,8 @@ import configparser
 import os
 
 from gitosis import gitdaemon
-from gitosis.test.util import write_file
+
+from .util import write_file
 
 
 def exported(path: str) -> bool:

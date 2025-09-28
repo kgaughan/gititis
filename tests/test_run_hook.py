@@ -2,7 +2,8 @@ import configparser
 import os
 
 from gitosis import init, repository, run_hook
-from gitosis.test.util import read_file
+
+from .util import read_file
 
 
 def test_post_update_simple(tmpdir):

@@ -5,11 +5,8 @@ import subprocess
 import pytest
 
 from gitosis import repository
-from gitosis.test.util import (
-    check_mode,
-    read_file,
-    write_file,
-)
+
+from .util import check_mode, read_file, write_file
 
 
 def check_bare(path):

@@ -7,7 +7,8 @@ import tempfile
 import pytest
 
 from gitosis import repository, serve
-from gitosis.test import util
+
+from . import util
 
 
 def test_bad_newline():

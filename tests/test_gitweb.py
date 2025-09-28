@@ -3,7 +3,8 @@ from io import StringIO
 import os
 
 from gitosis import gitweb
-from gitosis.test.util import read_file, write_file
+
+from .util import read_file, write_file
 
 
 def test_projects_list_empty():

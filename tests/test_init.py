@@ -4,7 +4,8 @@ import os
 import pytest
 
 from gitosis import init, repository
-from gitosis.test import util
+
+from . import util
 
 
 def test_ssh_extract_user_simple():

@@ -4,7 +4,8 @@ import os
 import pytest
 
 from gitosis import ssh
-from gitosis.test.util import read_file, write_file
+
+from .util import read_file, write_file
 
 
 def _key(s):
