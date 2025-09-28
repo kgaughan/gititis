@@ -1,154 +1,153 @@
-from nose.tools import eq_ as eq
-
+import configparser
 import os
 
-from gitosis import gitdaemon, util
-from gitosis.test.util import maketemp, writeFile
+from gitosis import gitdaemon
+from gitosis.test.util import write_file
 
-def exported(path):
+
+def exported(path: str) -> bool:
     assert os.path.isdir(path)
     p = gitdaemon.export_ok_path(path)
     return os.path.exists(p)
 
-def test_git_daemon_export_ok_repo_missing():
+
+def test_git_daemon_export_ok_repo_missing(tmpdir):
     # configured but not created yet; before first push
-    tmp = maketemp()
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'daemon', 'yes')
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
-    assert not os.path.exists(os.path.join(tmp, 'foo'))
-    assert not os.path.exists(os.path.join(tmp, 'foo.git'))
+    assert not os.path.exists(os.path.join(tmpdir, "foo"))
+    assert not os.path.exists(os.path.join(tmpdir, "foo.git"))
 
-def test_git_daemon_export_ok_repo_missing_parent():
+
+def test_git_daemon_export_ok_repo_missing_parent(tmpdir):
     # configured but not created yet; before first push
-    tmp = maketemp()
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo/bar')
-    cfg.set('repo foo/bar', 'daemon', 'yes')
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo/bar")
+    cfg.set("repo foo/bar", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
-    assert not os.path.exists(os.path.join(tmp, 'foo'))
+    assert not os.path.exists(os.path.join(tmpdir, "foo"))
 
-def test_git_daemon_export_ok_allowed():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
+
+def test_git_daemon_export_ok_allowed(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'daemon', 'yes')
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), True)
+    assert exported(path)
 
-def test_git_daemon_export_ok_allowed_already():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
+
+def test_git_daemon_export_ok_allowed_already(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    writeFile(gitdaemon.export_ok_path(path), '')
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'daemon', 'yes')
+    write_file(gitdaemon.export_ok_path(path), "")
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), True)
+    assert exported(path)
 
-def test_git_daemon_export_ok_denied():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
+
+def test_git_daemon_export_ok_denied(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    writeFile(gitdaemon.export_ok_path(path), '')
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'daemon', 'no')
+    write_file(gitdaemon.export_ok_path(path), "")
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "daemon", "no")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), False)
+    assert not exported(path)
 
-def test_git_daemon_export_ok_denied_already():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
+
+def test_git_daemon_export_ok_denied_already(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'daemon', 'no')
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "daemon", "no")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), False)
+    assert not exported(path)
 
-def test_git_daemon_export_ok_subdirs():
-    tmp = maketemp()
-    foo = os.path.join(tmp, 'foo')
+
+def test_git_daemon_export_ok_subdirs(tmpdir):
+    foo = os.path.join(tmpdir, "foo")
     os.mkdir(foo)
-    path = os.path.join(foo, 'bar.git')
+    path = os.path.join(foo, "bar.git")
     os.mkdir(path)
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo/bar')
-    cfg.set('repo foo/bar', 'daemon', 'yes')
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo/bar")
+    cfg.set("repo foo/bar", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), True)
+    assert exported(path)
 
-def test_git_daemon_export_ok_denied_default():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
+
+def test_git_daemon_export_ok_denied_default(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    writeFile(gitdaemon.export_ok_path(path), '')
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
+    write_file(gitdaemon.export_ok_path(path), "")
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), False)
+    assert not exported(path)
 
-def test_git_daemon_export_ok_denied_even_not_configured():
+
+def test_git_daemon_export_ok_denied_even_not_configured(tmpdir):
     # repositories not mentioned in config also get touched; this is
     # to avoid security trouble, otherwise we might expose (or
     # continue to expose) old repositories removed from config
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
+    path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    writeFile(gitdaemon.export_ok_path(path), '')
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
+    write_file(gitdaemon.export_ok_path(path), "")
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(path), False)
+    assert not exported(path)
 
-def test_git_daemon_export_ok_allowed_global():
-    tmp = maketemp()
 
+def test_git_daemon_export_ok_allowed_global(tmpdir):
     for repo in [
-        'foo.git',
-        'quux.git',
-        'thud.git',
-        ]:
-        path = os.path.join(tmp, repo)
+        "foo.git",
+        "quux.git",
+        "thud.git",
+    ]:
+        path = os.path.join(tmpdir, repo)
         os.mkdir(path)
 
     # try to provoke an invalid allow
-    writeFile(gitdaemon.export_ok_path(os.path.join(tmp, 'thud.git')), '')
+    write_file(gitdaemon.export_ok_path(os.path.join(tmpdir, "thud.git")), "")
 
-    cfg = util.RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.set('gitosis', 'daemon', 'yes')
-    cfg.add_section('repo foo')
-    cfg.add_section('repo quux')
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "daemon", "yes")
+    cfg.add_section("repo foo")
+    cfg.add_section("repo quux")
     # same as default, no effect
-    cfg.set('repo quux', 'daemon', 'yes')
-    cfg.add_section('repo thud')
+    cfg.set("repo quux", "daemon", "yes")
+    cfg.add_section("repo thud")
     # this is still hidden
-    cfg.set('repo thud', 'daemon', 'no')
+    cfg.set("repo thud", "daemon", "no")
     gitdaemon.set_export_ok(config=cfg)
-    eq(exported(os.path.join(tmp, 'foo.git')), True)
-    eq(exported(os.path.join(tmp, 'quux.git')), True)
-    eq(exported(os.path.join(tmp, 'thud.git')), False)
+    assert exported(os.path.join(tmpdir, "foo.git"))
+    assert exported(os.path.join(tmpdir, "quux.git"))
+    assert not exported(os.path.join(tmpdir, "thud.git"))

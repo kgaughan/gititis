@@ -1,20 +1,22 @@
+import configparser
 import logging
-from gitosis import util
 
-def _getMembership(config, user, seen):
-    log = logging.getLogger('gitosis.group.getMembership')
+GROUP_PREFIX = "group "
+
+
+def _get_membership(config, user, seen):
+    log = logging.getLogger("gitosis.group.getMembership")
 
     for section in config.sections():
-        GROUP_PREFIX = 'group '
         if not section.startswith(GROUP_PREFIX):
             continue
-        group = section[len(GROUP_PREFIX):]
+        group = section[len(GROUP_PREFIX) :]
         if group in seen:
             continue
 
         try:
-            members = config.get(section, 'members')
-        except (util.NoSectionError, util.NoOptionError):
+            members = config.get(section, "members")
+        except (configparser.NoSectionError, configparser.NoOptionError):
             members = []
         else:
             members = members.split()
@@ -22,22 +24,19 @@ def _getMembership(config, user, seen):
         # @all is the only group where membership needs to be
         # bootstrapped like this, anything else gets started from the
         # username itself
-        if (user in members
-            or '@all' in members):
-            log.debug('found %(user)r in %(group)r' % dict(
-                user=user,
-                group=group,
-                ))
+        if user in members or "@all" in members:
+            log.debug(f"found {user!r} in {group!r}")
             seen.add(group)
             yield group
 
-            for member_of in _getMembership(
-                config, '@%s' % group, seen,
-                ):
-                yield member_of
+            yield from _get_membership(
+                config,
+                f"@{group}",
+                seen,
+            )
 
 
-def getMembership(config, user):
+def get_membership(config, user):
     """
     Generate groups ``user`` is member of, according to ``config``
 
@@ -47,8 +46,7 @@ def getMembership(config, user):
     """
 
     seen = set()
-    for member_of in _getMembership(config, user, seen):
-        yield member_of
+    yield from _get_membership(config, user, seen)
 
     # everyone is always a member of group "all"
-    yield 'all'
+    yield "all"

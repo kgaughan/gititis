@@ -1,45 +1,25 @@
-import errno
+import configparser
 import os
-import sys
 
-if sys.version_info.major == 2:
-    from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
-    from urllib import quote_plus
-    from cStringIO import StringIO
-else:
-    from configparser import RawConfigParser, NoSectionError, NoOptionError
-    from urllib.parse import quote_plus
-    from io import StringIO
 
-def mkdir(*a, **kw):
+def get_repository_dir(config: configparser.RawConfigParser) -> str:
+    repositories = os.path.expanduser("~")
     try:
-        os.mkdir(*a, **kw)
-    except OSError as e:
-        if e.errno == errno.EEXIST:
-            pass
-        else:
-            raise
+        path = config.get("gitosis", "repositories")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        return os.path.join(repositories, "repositories")
+    return os.path.join(repositories, path)
 
-def getRepositoryDir(config):
-    repositories = os.path.expanduser('~')
-    try:
-        path = config.get('gitosis', 'repositories')
-    except (NoSectionError, NoOptionError):
-        repositories = os.path.join(repositories, 'repositories')
-    else:
-        repositories = os.path.join(repositories, path)
-    return repositories
 
-def getGeneratedFilesDir(config):
+def get_generated_files_dir(config: configparser.RawConfigParser) -> str:
     try:
-        generated = config.get('gitosis', 'generate-files-in')
-    except (NoSectionError, NoOptionError):
-        generated = os.path.expanduser('~/gitosis')
-    return generated
+        return config.get("gitosis", "generate-files-in")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        return os.path.expanduser("~/gitosis")
 
-def getSSHAuthorizedKeysPath(config):
+
+def get_ssh_authorized_keys_path(config: configparser.RawConfigParser) -> str:
     try:
-        path = config.get('gitosis', 'ssh-authorized-keys-path')
-    except (NoSectionError, NoOptionError):
-        path = os.path.expanduser('~/.ssh/authorized_keys')
-    return path
+        return config.get("gitosis", "ssh-authorized-keys-path")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        return os.path.expanduser("~/.ssh/authorized_keys")

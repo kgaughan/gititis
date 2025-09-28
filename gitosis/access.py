@@ -1,8 +1,11 @@
-import os, logging
+import configparser
+import logging
+import os
 
-from gitosis import group, util
+from gitosis import group
 
-def haveAccess(config, user, mode, path):
+
+def have_access(config, user, mode, path):
     """
     Map request for write access to allowed path.
 
@@ -12,30 +15,19 @@ def haveAccess(config, user, mode, path):
     Returns ``None`` for no access, or a tuple of toplevel directory
     containing repositories and a relative path to the physical repository.
     """
-    log = logging.getLogger('gitosis.access.haveAccess')
+    log = logging.getLogger("gitosis.access.haveAccess")
 
-    log.debug(
-        'Access check for %(user)r as %(mode)r on %(path)r...'
-        % dict(
-        user=user,
-        mode=mode,
-        path=path,
-        ))
+    log.debug(f"Access check for {user!r} as {mode!r} on {path!r}...")
 
     basename, ext = os.path.splitext(path)
-    if ext == '.git':
-        log.debug(
-            'Stripping .git suffix from %(path)r, new value %(basename)r'
-            % dict(
-            path=path,
-            basename=basename,
-            ))
+    if ext == ".git":
+        log.debug(f"Stripping .git suffix from {path!r}, new value {basename!r}")
         path = basename
 
-    for groupname in group.getMembership(config=config, user=user):
+    for groupname in group.get_membership(config=config, user=user):
         try:
-            repos = config.get('group %s' % groupname, mode)
-        except (util.NoSectionError, util.NoOptionError):
+            repos = config.get(f"group {groupname}", mode)
+        except (configparser.NoSectionError, configparser.NoOptionError):
             repos = []
         else:
             repos = repos.split()
@@ -43,45 +35,25 @@ def haveAccess(config, user, mode, path):
         mapping = None
 
         if path in repos:
-            log.debug(
-                'Access ok for %(user)r as %(mode)r on %(path)r'
-                % dict(
-                user=user,
-                mode=mode,
-                path=path,
-                ))
+            log.debug(f"Access ok for {user!r} as {mode!r} on {path!r}")
             mapping = path
         else:
             try:
-                mapping = config.get('group %s' % groupname,
-                                     'map %s %s' % (mode, path))
-            except (util.NoSectionError, util.NoOptionError):
+                mapping = config.get(f"group {groupname}", f"map {mode} {path}")
+            except (configparser.NoSectionError, configparser.NoOptionError):
                 pass
             else:
-                log.debug(
-                    'Access ok for %(user)r as %(mode)r on %(path)r=%(mapping)r'
-                    % dict(
-                    user=user,
-                    mode=mode,
-                    path=path,
-                    mapping=mapping,
-                    ))
+                log.debug(f"Access ok for {user!r} as {mode!r} on {path!r}={mapping!r}")
 
         if mapping is not None:
             prefix = None
             try:
-                prefix = config.get(
-                    'group %s' % groupname, 'repositories')
-            except (util.NoSectionError, util.NoOptionError):
+                prefix = config.get(f"group {groupname}", "repositories")
+            except (configparser.NoSectionError, configparser.NoOptionError):
                 try:
-                    prefix = config.get('gitosis', 'repositories')
-                except (util.NoSectionError, util.NoOptionError):
-                    prefix = 'repositories'
+                    prefix = config.get("gitosis", "repositories")
+                except (configparser.NoSectionError, configparser.NoOptionError):
+                    prefix = "repositories"
 
-            log.debug(
-                'Using prefix %(prefix)r for %(path)r'
-                % dict(
-                prefix=prefix,
-                path=mapping,
-                ))
+            log.debug(f"Using prefix {prefix!r} for {mapping!r}")
             return (prefix, mapping)

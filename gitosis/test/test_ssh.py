@@ -1,12 +1,15 @@
-from nose.tools import eq_ as eq, assert_raises
-
+import io
 import os
 
-from gitosis import ssh, util
-from gitosis.test.util import mkdir, maketemp, writeFile, readFile, partial_next
+import pytest
+
+from gitosis import ssh
+from gitosis.test.util import read_file, write_file
+
 
 def _key(s):
-    return ''.join(s.split('\n')).strip()
+    return "".join(s.split("\n")).strip()
+
 
 KEY_1 = _key("""
 ssh-rsa +v5XLsUrLsHOKy7Stob1lHZM17YCCNXplcKfbpIztS2PujyixOaBev1ku6H6ny
@@ -22,176 +25,176 @@ ZwIAo7y/BU7cD3Y9UdVZykG34NiijHZLlCBo/TnobXjFIPXvFbfgQ3y8g+akwocFVcQ= f
 roop@snoop
 """)
 
-class ReadKeys_Test(object):
-    def test_empty(self):
-        tmp = maketemp()
-        empty = os.path.join(tmp, 'empty')
-        mkdir(empty)
-        gen = ssh.readKeys(keydir=empty)
-        assert_raises(StopIteration, partial_next(gen))
 
-    def test_ignore_dot(self):
-        tmp = maketemp()
-        keydir = os.path.join(tmp, 'ignore_dot')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, '.jdoe.pub'), KEY_1+'\n')
-        gen = ssh.readKeys(keydir=keydir)
-        assert_raises(StopIteration, partial_next(gen))
+def test_empty(tmpdir):
+    empty = os.path.join(tmpdir, "empty")
+    os.makedirs(empty)
+    gen = ssh.read_keys(keydir=empty)
+    with pytest.raises(StopIteration):
+        next(gen)
 
-    def test_ignore_nonpub(self):
-        tmp = maketemp()
-        keydir = os.path.join(tmp, 'ignore_dot')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, 'jdoe.xub'), KEY_1+'\n')
-        gen = ssh.readKeys(keydir=keydir)
-        assert_raises(StopIteration, partial_next(gen))
 
-    def test_one(self):
-        tmp = maketemp()
-        keydir = os.path.join(tmp, 'one')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, 'jdoe.pub'), KEY_1+'\n')
+def test_ignore_dot(tmpdir):
+    keydir = os.path.join(tmpdir, "ignore_dot")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, ".jdoe.pub"), KEY_1 + "\n")
+    gen = ssh.read_keys(keydir=keydir)
+    with pytest.raises(StopIteration):
+        next(gen)
 
-        gen = ssh.readKeys(keydir=keydir)
-        eq(next(gen), ('jdoe', KEY_1))
-        assert_raises(StopIteration, partial_next(gen))
 
-    def test_two(self):
-        tmp = maketemp()
-        keydir = os.path.join(tmp, 'two')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, 'jdoe.pub'), KEY_1+'\n')
-        writeFile(os.path.join(keydir, 'wsmith.pub'), KEY_2+'\n')
+def test_ignore_nonpub(tmpdir):
+    keydir = os.path.join(tmpdir, "ignore_dot")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, "jdoe.xub"), KEY_1 + "\n")
+    gen = ssh.read_keys(keydir=keydir)
+    with pytest.raises(StopIteration):
+        next(gen)
 
-        gen = ssh.readKeys(keydir=keydir)
-        got = frozenset(gen)
 
-        eq(got,
-           frozenset([
-            ('jdoe', KEY_1),
-            ('wsmith', KEY_2),
-            ]))
+def test_one(tmpdir):
+    keydir = os.path.join(tmpdir, "one")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, "jdoe.pub"), KEY_1 + "\n")
 
-    def test_multiple_lines(self):
-        tmp = maketemp()
-        keydir = os.path.join(tmp, 'keys')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, 'jd"oe.pub'), KEY_1+'\n')
+    gen = ssh.read_keys(keydir=keydir)
+    assert next(gen) == ("jdoe", KEY_1)
+    with pytest.raises(StopIteration):
+        next(gen)
 
-        gen = ssh.readKeys(keydir=keydir)
-        got = frozenset(gen)
-        eq(got, frozenset([]))
 
-    def test_bad_filename(self):
-        tmp = maketemp()
-        keydir = os.path.join(tmp, 'two')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, 'jdoe.pub'), KEY_1+'\n'+KEY_2+'\n')
+def test_two(tmpdir):
+    keydir = os.path.join(tmpdir, "two")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, "jdoe.pub"), KEY_1 + "\n")
+    write_file(os.path.join(keydir, "wsmith.pub"), KEY_2 + "\n")
 
-        gen = ssh.readKeys(keydir=keydir)
-        got = frozenset(gen)
+    gen = ssh.read_keys(keydir=keydir)
+    assert frozenset(gen) == frozenset(
+        [
+            ("jdoe", KEY_1),
+            ("wsmith", KEY_2),
+        ]
+    )
 
-        eq(got,
-           frozenset([
-            ('jdoe', KEY_1),
-            ('jdoe', KEY_2),
-            ]))
 
-class GenerateAuthorizedKeys_Test(object):
+def test_multiple_lines(tmpdir):
+    keydir = os.path.join(tmpdir, "keys")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, 'jd"oe.pub'), KEY_1 + "\n")
+
+    gen = ssh.read_keys(keydir=keydir)
+    assert frozenset(gen) == frozenset([])
+
+
+def test_bad_filename(tmpdir):
+    keydir = os.path.join(tmpdir, "two")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, "jdoe.pub"), KEY_1 + "\n" + KEY_2 + "\n")
+
+    gen = ssh.read_keys(keydir=keydir)
+    assert frozenset(gen) == frozenset(
+        [
+            ("jdoe", KEY_1),
+            ("jdoe", KEY_2),
+        ]
+    )
+
+
+class GenerateAuthorizedKeysTest:
     def test_simple(self):
         def k():
-            yield ('jdoe', KEY_1)
-            yield ('wsmith', KEY_2)
-        gen = ssh.generateAuthorizedKeys(k())
-        eq(next(gen), ssh.COMMENT)
-        eq(next(gen), (
-            'command="gitosis-serve jdoe",no-port-forwarding,no-X11-f'
-            +'orwarding,no-agent-forwarding,no-pty %s' % KEY_1))
-        eq(next(gen), (
+            yield ("jdoe", KEY_1)
+            yield ("wsmith", KEY_2)
+
+        gen = ssh.generate_authorized_keys(k())
+        assert next(gen) == ssh.COMMENT
+        assert next(gen) == (
+            'command="gitosis-serve jdoe",no-port-forwarding,no-X11-f' + f"orwarding,no-agent-forwarding,no-pty {KEY_1}"
+        )
+        assert next(gen) == (
             'command="gitosis-serve wsmith",no-port-forwarding,no-X11'
-            +'-forwarding,no-agent-forwarding,no-pty %s' % KEY_2))
-        assert_raises(StopIteration, partial_next(gen))
+            + f"-forwarding,no-agent-forwarding,no-pty {KEY_2}"
+        )
+
+        with pytest.raises(StopIteration):
+            next(gen)
 
 
-class FilterAuthorizedKeys_Test(object):
+class FilterAuthorizedKeysTest:
     def run(self, s):
-        f = util.StringIO(s)
-        lines = ssh.filterAuthorizedKeys(f)
-        got = ''.join(['%s\n' % line for line in lines])
+        f = io.StringIO(s)
+        lines = ssh.filter_authorized_keys(f)
+        got = "".join([f"{line}\n" for line in lines])
         return got
 
     def check_no_change(self, s):
-        got = self.run(s)
-        eq(got, s)
+        assert self.run(s) == s
 
-    def test_notFiltered_comment(self):
-        self.check_no_change('#comment\n')
+    def test_not_filtered_comment(self):
+        self.check_no_change("#comment\n")
 
-    def test_notFiltered_junk(self):
-        self.check_no_change('junk\n')
+    def test_not_filtered_junk(self):
+        self.check_no_change("junk\n")
 
-    def test_notFiltered_key(self):
-        self.check_no_change('%s\n' % KEY_1)
+    def test_not_filtered_key(self):
+        self.check_no_change(f"{KEY_1}\n")
 
-    def test_notFiltered_keyWithCommand(self):
-        s = '''\
+    def test_not_filtered_key_with_command(self):
+        s = f"""\
 command="faketosis-serve wsmith",no-port-forwarding,no-X11-forwardin\
-g,no-agent-forwarding,no-pty %(key_1)s
-''' % dict(key_1=KEY_1)
+g,no-agent-forwarding,no-pty {KEY_1}
+"""
         self.check_no_change(s)
 
+    def test_filter_autogenerated_comment_backwards_compat(self):
+        assert self.run("### autogenerated by gitosis, DO NOT EDIT\n") == ""
 
-    def test_filter_autogeneratedComment_backwardsCompat(self):
-        got = self.run('### autogenerated by gitosis, DO NOT EDIT\n')
-        eq(got, '')
-
-    def test_filter_autogeneratedComment_current(self):
-        got = self.run(ssh.COMMENT+'\n')
-        eq(got, '')
+    def test_filter_autogenerated_comment_current(self):
+        assert self.run(ssh.COMMENT + "\n") == ""
 
     def test_filter_simple(self):
-        s = '''\
+        s = f"""\
 command="gitosis-serve wsmith",no-port-forwarding,no-X11-forwardin\
-g,no-agent-forwarding,no-pty %(key_1)s
-''' % dict(key_1=KEY_1)
-        got = self.run(s)
-        eq(got, '')
+g,no-agent-forwarding,no-pty {KEY_1}
+"""
+        assert self.run(s) == ""
 
-    def test_filter_withPath(self):
-        s = '''\
+    def test_filter_with_path(self):
+        s = f"""\
 command="/foo/bar/baz/gitosis-serve wsmith",no-port-forwarding,no-X11-forwardin\
-g,no-agent-forwarding,no-pty %(key_1)s
-''' % dict(key_1=KEY_1)
-        got = self.run(s)
-        eq(got, '')
+g,no-agent-forwarding,no-pty {KEY_1}
+"""
+        assert self.run(s) == ""
 
 
-class WriteAuthorizedKeys_Test(object):
-    def test_simple(self):
-        tmp = maketemp()
-        path = os.path.join(tmp, 'authorized_keys')
-        with open(path, 'w') as f:
-            f.write('''\
+def test_write_authorized_keys(tmpdir):
+    path = os.path.join(tmpdir, "authorized_keys")
+    with open(path, "w") as f:
+        f.write(
+            f"""\
 # foo
 bar
 ### autogenerated by gitosis, DO NOT EDIT
 command="/foo/bar/baz/gitosis-serve wsmith",no-port-forwarding,\
-no-X11-forwarding,no-agent-forwarding,no-pty %(key_2)s
+no-X11-forwarding,no-agent-forwarding,no-pty {KEY_2}
 baz
-''' % dict(key_2=KEY_2))
-        keydir = os.path.join(tmp, 'one')
-        mkdir(keydir)
-        writeFile(os.path.join(keydir, 'jdoe.pub'), KEY_1+'\n')
+"""
+        )
+    keydir = os.path.join(tmpdir, "one")
+    os.makedirs(keydir)
+    write_file(os.path.join(keydir, "jdoe.pub"), KEY_1 + "\n")
 
-        ssh.writeAuthorizedKeys(
-            path=path, keydir=keydir)
+    ssh.write_authorized_keys(path=path, keydir=keydir)
 
-        got = readFile(path)
-        eq(got, '''\
+    assert (
+        read_file(path)
+        == f"""\
 # foo
 bar
 baz
 ### autogenerated by gitosis, DO NOT EDIT
 command="gitosis-serve jdoe",no-port-forwarding,\
-no-X11-forwarding,no-agent-forwarding,no-pty %(key_1)s
-''' % dict(key_1=KEY_1))
+no-X11-forwarding,no-agent-forwarding,no-pty {KEY_1}
+"""
+    )

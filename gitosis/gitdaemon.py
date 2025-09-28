@@ -1,18 +1,22 @@
+import configparser
 import errno
 import logging
 import os
 
 from gitosis import util
 
-log = logging.getLogger('gitosis.gitdaemon')
+log = logging.getLogger("gitosis.gitdaemon")
+
 
 def export_ok_path(repopath):
-    p = os.path.join(repopath, 'git-daemon-export-ok')
+    p = os.path.join(repopath, "git-daemon-export-ok")
     return p
+
 
 def allow_export(repopath):
     p = export_ok_path(repopath)
-    open(p, 'a').close()
+    open(p, "a").close()
+
 
 def deny_export(repopath):
     p = export_ok_path(repopath)
@@ -24,25 +28,26 @@ def deny_export(repopath):
         else:
             raise
 
+
 def _extract_reldir(topdir, dirpath):
     if topdir == dirpath:
-        return '.'
-    prefix = topdir + '/'
-    assert dirpath.startswith(prefix)
-    reldir = dirpath[len(prefix):]
+        return "."
+    prefix = topdir + "/"
+    reldir = dirpath[len(prefix) :]
     return reldir
 
+
 def set_export_ok(config):
-    repositories = util.getRepositoryDir(config)
+    repositories = util.get_repository_dir(config)
 
     try:
-        global_enable = config.getboolean('gitosis', 'daemon')
-    except (util.NoSectionError, util.NoOptionError):
+        global_enable = config.getboolean("gitosis", "daemon")
+    except (configparser.NoSectionError, configparser.NoOptionError):
         global_enable = False
     log.debug(
-        'Global default is %r',
-        {True: 'allow', False: 'deny'}.get(global_enable),
-        )
+        "Global default is %r",
+        {True: "allow", False: "deny"}.get(global_enable),
+    )
 
     def _error(e):
         if e.errno == errno.ENOENT:
@@ -50,21 +55,20 @@ def set_export_ok(config):
         else:
             raise e
 
-    for (dirpath, dirnames, filenames) \
-            in os.walk(repositories, onerror=_error):
+    for dirpath, dirnames, _filenames in os.walk(repositories, onerror=_error):
         # oh how many times i have wished for os.walk to report
         # topdir and reldir separately, instead of dirpath
         reldir = _extract_reldir(
             topdir=repositories,
             dirpath=dirpath,
-            )
+        )
 
-        log.debug('Walking %r, seeing %r', reldir, dirnames)
+        log.debug("Walking %r, seeing %r", reldir, dirnames)
 
         to_recurse = []
         repos = []
         for dirname in dirnames:
-            if dirname.endswith('.git'):
+            if dirname.endswith(".git"):
                 repos.append(dirname)
             else:
                 to_recurse.append(dirname)
@@ -72,17 +76,16 @@ def set_export_ok(config):
 
         for repo in repos:
             name, ext = os.path.splitext(repo)
-            if reldir != '.':
+            if reldir != ".":
                 name = os.path.join(reldir, name)
-            assert ext == '.git'
             try:
-                enable = config.getboolean('repo %s' % name, 'daemon')
-            except (util.NoSectionError, util.NoOptionError):
+                enable = config.getboolean(f"repo {name}", "daemon")
+            except (configparser.NoSectionError, configparser.NoOptionError):
                 enable = global_enable
 
             if enable:
-                log.debug('Allow %r', name)
+                log.debug("Allow %r", name)
                 allow_export(os.path.join(dirpath, repo))
             else:
-                log.debug('Deny %r', name)
+                log.debug("Deny %r", name)
                 deny_export(os.path.join(dirpath, repo))

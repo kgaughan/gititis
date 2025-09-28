@@ -1,65 +1,20 @@
-from nose.tools import eq_ as eq
-
-import errno
-import functools
 import os
-import shutil
 import stat
-import sys
 
-def mkdir(*a, **kw):
-    try:
-        os.mkdir(*a, **kw)
-    except OSError as e:
-        if e.errno == errno.EEXIST:
-            pass
-        else:
-            raise
 
-def maketemp():
-    tmp = os.path.join(os.path.dirname(__file__), 'tmp')
-    mkdir(tmp)
-
-    caller = sys._getframe(1)
-    name = '%s.%s' % (
-        sys._getframe(1).f_globals['__name__'],
-        caller.f_code.co_name,
-        )
-    tmp = os.path.join(tmp, name)
-    try:
-        shutil.rmtree(tmp)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            pass
-        else:
-            raise
-    os.mkdir(tmp)
-    return tmp
-
-def writeFile(path, content):
-    tmp = '%s.tmp' % path
-    with open(tmp, 'w') as f:
+def write_file(path: str, content: str):
+    tmp = f"{path}.tmp"
+    with open(tmp, "w") as f:
         f.write(content)
     os.rename(tmp, path)
 
-def readFile(path):
+
+def read_file(path: str) -> str:
     with open(path) as f:
         return f.read()
 
-def assert_raises(excClass, callableObj, *args, **kwargs):
-    """
-    Like unittest.TestCase.assertRaises, but returns the exception.
-    """
-    try:
-        callableObj(*args, **kwargs)
-    except excClass as e:
-        return e
-    else:
-        if hasattr(excClass,'__name__'): excName = excClass.__name__
-        else: excName = str(excClass)
-        raise AssertionError("%s not raised" % excName)
 
-def check_mode(path, mode, is_file=None, is_dir=None):
+def check_mode(path: str, mode: int, *, is_file: bool = False, is_dir: bool = False):
     st = os.stat(path)
     if is_dir:
         assert stat.S_ISDIR(st.st_mode)
@@ -67,7 +22,4 @@ def check_mode(path, mode, is_file=None, is_dir=None):
         assert stat.S_ISREG(st.st_mode)
 
     got = stat.S_IMODE(st.st_mode)
-    eq(got, mode, 'File mode %04o!=%04o for %s' % (got, mode, path))
-
-def partial_next(gen):
-    return functools.partial(next, gen)
+    assert got == mode, f"File mode {got:04o}!={mode:04o} for {path}"

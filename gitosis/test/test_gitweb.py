@@ -1,219 +1,220 @@
-from nose.tools import eq_ as eq
-
+import configparser
+from io import StringIO
 import os
 
 from gitosis import gitweb
-from gitosis.util import RawConfigParser, StringIO
-from gitosis.test.util import mkdir, maketemp, readFile, writeFile
+from gitosis.test.util import read_file, write_file
 
-def test_projectsList_empty():
-    cfg = RawConfigParser()
-    got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(got.getvalue(), '''\
-''')
 
-def test_projectsList_repoDenied():
-    cfg = RawConfigParser()
-    cfg.add_section('repo foo/bar')
+def test_projects_list_empty():
+    cfg = configparser.RawConfigParser()
     got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(got.getvalue(), '''\
-''')
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert (
+        got.getvalue()
+        == """\
+"""
+    )
 
-def test_projectsList_noOwner():
-    cfg = RawConfigParser()
-    cfg.add_section('repo foo/bar')
-    cfg.set('repo foo/bar', 'gitweb', 'yes')
+
+def test_projects_list_repo_denied():
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("repo foo/bar")
     got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(got.getvalue(), '''\
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert (
+        got.getvalue()
+        == """\
+"""
+    )
+
+
+def test_projects_list_no_owner():
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("repo foo/bar")
+    cfg.set("repo foo/bar", "gitweb", "yes")
+    got = StringIO()
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert (
+        got.getvalue()
+        == """\
 foo%2Fbar
-''')
+"""
+    )
 
-def test_projectsList_haveOwner():
-    cfg = RawConfigParser()
-    cfg.add_section('repo foo/bar')
-    cfg.set('repo foo/bar', 'gitweb', 'yes')
-    cfg.set('repo foo/bar', 'owner', 'John Doe')
+
+def test_projects_list_have_owner():
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("repo foo/bar")
+    cfg.set("repo foo/bar", "gitweb", "yes")
+    cfg.set("repo foo/bar", "owner", "John Doe")
     got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(got.getvalue(), '''\
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert (
+        got.getvalue()
+        == """\
 foo%2Fbar John+Doe
-''')
+"""
+    )
 
-def test_projectsList_multiple():
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.add_section('repo foo/bar')
-    cfg.set('repo foo/bar', 'owner', 'John Doe')
-    cfg.set('repo foo/bar', 'gitweb', 'yes')
-    cfg.add_section('repo quux')
-    cfg.set('repo quux', 'gitweb', 'yes')
+
+def test_projects_list_multiple():
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.add_section("repo foo/bar")
+    cfg.set("repo foo/bar", "owner", "John Doe")
+    cfg.set("repo foo/bar", "gitweb", "yes")
+    cfg.add_section("repo quux")
+    cfg.set("repo quux", "gitweb", "yes")
     got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(frozenset(got.getvalue().splitlines(True)),
-       frozenset(['quux\n', 'foo%2Fbar John+Doe\n']))
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert frozenset(got.getvalue().splitlines(keepends=True)) == frozenset(["quux\n", "foo%2Fbar John+Doe\n"])
 
-def test_projectsList_multiple_globalGitwebYes():
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'gitweb', 'yes')
-    cfg.add_section('repo foo/bar')
-    cfg.set('repo foo/bar', 'owner', 'John Doe')
-    cfg.add_section('repo quux')
+
+def test_projects_list_multiple_global_gitweb_yes():
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "gitweb", "yes")
+    cfg.add_section("repo foo/bar")
+    cfg.set("repo foo/bar", "owner", "John Doe")
+    cfg.add_section("repo quux")
     # same as default, no effect
-    cfg.set('repo quux', 'gitweb', 'yes')
-    cfg.add_section('repo thud')
+    cfg.set("repo quux", "gitweb", "yes")
+    cfg.add_section("repo thud")
     # this is still hidden
-    cfg.set('repo thud', 'gitweb', 'no')
+    cfg.set("repo thud", "gitweb", "no")
     got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(frozenset(got.getvalue().splitlines(True)),
-       frozenset(['quux\n', 'foo%2Fbar John+Doe\n']))
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert frozenset(got.getvalue().splitlines(keepends=True)) == frozenset(["quux\n", "foo%2Fbar John+Doe\n"])
 
-def test_projectsList_reallyEndsWithGit():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    mkdir(path)
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'gitweb', 'yes')
+
+def test_projects_list_really_ends_with_git(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
+    os.makedirs(path)
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "gitweb", "yes")
     got = StringIO()
-    gitweb.generate_project_list_fp(
-        config=cfg,
-        fp=got)
-    eq(got.getvalue(), '''\
+    gitweb.generate_project_list_fp(config=cfg, fp=got)
+    assert (
+        got.getvalue()
+        == """\
 foo.git
-''')
+"""
+    )
 
-def test_projectsList_path():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    mkdir(path)
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'gitweb', 'yes')
-    projects_list = os.path.join(tmp, 'projects.list')
-    gitweb.generate_project_list(
-        config=cfg,
-        path=projects_list)
-    got = readFile(projects_list)
-    eq(got, '''\
+
+def test_projects_list_path(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
+    os.makedirs(path)
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "gitweb", "yes")
+    projects_list = os.path.join(tmpdir, "projects.list")
+    gitweb.generate_project_list(config=cfg, path=projects_list)
+    got = read_file(projects_list)
+    assert (
+        got
+        == """\
 foo.git
-''')
+"""
+    )
 
-def test_description_none():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    mkdir(path)
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'description', 'foodesc')
+
+def test_description_none(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
+    os.makedirs(path)
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
         config=cfg,
-        )
-    got = readFile(os.path.join(path, 'description'))
-    eq(got, 'foodesc\n')
+    )
+    got = read_file(os.path.join(path, "description"))
+    assert got == "foodesc\n"
 
-def test_description_repo_missing():
+
+def test_description_repo_missing(tmpdir):
     # configured but not created yet; before first push
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'description', 'foodesc')
+    os.path.join(tmpdir, "foo.git")
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
         config=cfg,
-        )
-    assert not os.path.exists(os.path.join(tmp, 'foo'))
-    assert not os.path.exists(os.path.join(tmp, 'foo.git'))
+    )
+    assert not os.path.exists(os.path.join(tmpdir, "foo"))
+    assert not os.path.exists(os.path.join(tmpdir, "foo.git"))
 
-def test_description_repo_missing_parent():
+
+def test_description_repo_missing_parent(tmpdir):
     # configured but not created yet; before first push
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo/bar.git')
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'description', 'foodesc')
+    os.path.join(tmpdir, "foo/bar.git")
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
         config=cfg,
-        )
-    assert not os.path.exists(os.path.join(tmp, 'foo'))
+    )
+    assert not os.path.exists(os.path.join(tmpdir, "foo"))
 
-def test_description_default():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    mkdir(path)
-    writeFile(
-        os.path.join(path, 'description'),
-        'Unnamed repository; edit this file to name it for gitweb.\n',
-        )
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'description', 'foodesc')
-    gitweb.set_descriptions(
-        config=cfg,
-        )
-    got = readFile(os.path.join(path, 'description'))
-    eq(got, 'foodesc\n')
 
-def test_description_not_set():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    mkdir(path)
-    writeFile(
-        os.path.join(path, 'description'),
-        'i was here first\n',
-        )
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
+def test_description_default(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
+    os.makedirs(path)
+    write_file(
+        os.path.join(path, "description"),
+        "Unnamed repository; edit this file to name it for gitweb.\n",
+    )
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
         config=cfg,
-        )
-    got = readFile(os.path.join(path, 'description'))
-    eq(got, 'i was here first\n')
+    )
+    got = read_file(os.path.join(path, "description"))
+    assert got == "foodesc\n"
 
-def test_description_again():
-    tmp = maketemp()
-    path = os.path.join(tmp, 'foo.git')
-    mkdir(path)
-    cfg = RawConfigParser()
-    cfg.add_section('gitosis')
-    cfg.set('gitosis', 'repositories', tmp)
-    cfg.add_section('repo foo')
-    cfg.set('repo foo', 'description', 'foodesc')
+
+def test_description_not_set(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
+    os.makedirs(path)
+    write_file(
+        os.path.join(path, "description"),
+        "i was here first\n",
+    )
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
     gitweb.set_descriptions(
         config=cfg,
-        )
-    gitweb.set_descriptions(
-        config=cfg,
-        )
-    got = readFile(os.path.join(path, 'description'))
-    eq(got, 'foodesc\n')
+    )
+    got = read_file(os.path.join(path, "description"))
+    assert got == "i was here first\n"
+
+
+def test_description_again(tmpdir):
+    path = os.path.join(tmpdir, "foo.git")
+    os.makedirs(path, exist_ok=True)
+    cfg = configparser.RawConfigParser()
+    cfg.add_section("gitosis")
+    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.add_section("repo foo")
+    cfg.set("repo foo", "description", "foodesc")
+    gitweb.set_descriptions(config=cfg)
+    gitweb.set_descriptions(config=cfg)
+    got = read_file(os.path.join(path, "description"))
+    assert got == "foodesc\n"
