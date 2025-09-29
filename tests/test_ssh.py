@@ -4,8 +4,7 @@ import os
 import pytest
 
 from gitosis import ssh
-
-from .util import read_file, write_file
+from gitosis.util import read_file, write_file
 
 
 def _key(s):
@@ -126,8 +125,7 @@ class FilterAuthorizedKeysTest:
     def run(self, s):
         f = io.StringIO(s)
         lines = ssh.filter_authorized_keys(f)
-        got = "".join([f"{line}\n" for line in lines])
-        return got
+        return "".join([f"{line}\n" for line in lines])
 
     def check_no_change(self, s):
         assert self.run(s) == s

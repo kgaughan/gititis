@@ -1,42 +1,42 @@
-"""
-Initialize a user account for use with gitosis.
-"""
+"""Initialize a user account for use with gitosis."""
 
 import configparser
+import contextlib
 import errno
 import io
 import logging
+import optparse
 import os
+import secrets
 import sys
+import typing as t
 
 from gitosis import app, repository, run_hook, ssh, util
 
-log = logging.getLogger("gitosis.init")
+_log = logging.getLogger(__name__)
 
 
-def read_ssh_pubkey(fp=None):
+def read_ssh_pubkey(fp: t.Optional[t.IO] = None) -> str:
     if fp is None:
         fp = sys.stdin
-    line = fp.readline()
-    return line
+    return fp.readline()  # type: ignore
 
 
 class InsecureSSHKeyUsernameError(Exception):
     """Username contains not allowed characters"""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__doc__}: {': '.join(self.args)}"
 
 
-def ssh_extract_user(pubkey):
+def ssh_extract_user(pubkey: str) -> str:
     _, user = pubkey.rsplit(None, 1)
     if ssh.is_safe_username(user):
         return user
-    else:
-        raise InsecureSSHKeyUsernameError(repr(user))
+    raise InsecureSSHKeyUsernameError(repr(user))
 
 
-def initial_commit(git_dir, cfg, pubkey, user):
+def initial_commit(git_dir: str, cfg: str, pubkey: str, user: str) -> None:
     repository.fast_import(
         git_dir=git_dir,
         commit_msg="Automatic creation of gitosis repository.",
@@ -48,9 +48,9 @@ def initial_commit(git_dir, cfg, pubkey, user):
     )
 
 
-def symlink_config(git_dir):
+def symlink_config(git_dir: str) -> None:
     dst = os.path.expanduser("~/.gitosis.conf")
-    tmp = f"{dst}.{os.getpid()}.tmp"
+    tmp = f"{dst}.{secrets.token_hex(16)}.tmp"
     try:
         os.unlink(tmp)
     except OSError as e:
@@ -63,10 +63,10 @@ def symlink_config(git_dir):
 
 
 def init_admin_repository(
-    git_dir,
-    pubkey,
-    user,
-):
+    git_dir: str,
+    pubkey: str,
+    user: str,
+) -> None:
     repository.init(
         path=git_dir,
         # This is not ideal, but I don't have anything better right now. This
@@ -81,13 +81,13 @@ def init_admin_repository(
     os.chmod(os.path.join(git_dir, "hooks", "post-update"), 0o755)  # noqa: S103
 
     if not repository.has_initial_commit(git_dir):
-        log.info("Making initial commit...")
+        _log.info("Making initial commit...")
         # ConfigParser does not guarantee order, so jump through hoops
         # to make sure [gitosis] is first
         cfg_file = io.StringIO()
         print("[gitosis]", file=cfg_file)
         print(file=cfg_file)
-        cfg = configparser.RawConfigParser()
+        cfg = configparser.ConfigParser(interpolation=None)
         cfg.add_section("group gitosis-admin")
         cfg.set("group gitosis-admin", "members", user)
         cfg.set("group gitosis-admin", "writable", "gitosis-admin")
@@ -101,35 +101,39 @@ def init_admin_repository(
 
 
 class Main(app.App):
-    def create_parser(self):
+    def create_parser(self) -> optparse.OptionParser:
         parser = super().create_parser()
         parser.set_usage("%prog [OPTS]")
         parser.set_description("Initialize a user account for use with gitosis")
         return parser
 
-    def read_config(self, *a, **kw):
+    def read_config(self, *a, **kw) -> None:  # noqa: ANN002, ANN003
         # ignore errors that result from non-existent config file
-        try:
+        with contextlib.suppress(app.ConfigFileDoesNotExistError):
             super().read_config(*a, **kw)
-        except app.ConfigFileDoesNotExistError:
-            pass
 
-    def handle_args(self, parser, cfg, options, args):
+    def handle_args(
+        self,
+        parser: optparse.OptionParser,
+        cfg: configparser.ConfigParser,
+        options: optparse.Values,
+        args: list[str],
+    ) -> None:
         super().handle_args(parser, cfg, options, args)
 
         os.umask(0o022)
 
-        log.info("Reading SSH public key...")
+        _log.info("Reading SSH public key...")
         pubkey = read_ssh_pubkey()
         user = ssh_extract_user(pubkey)
         if user is None:
-            log.error("Cannot parse user from SSH public key.")
+            _log.error("Cannot parse user from SSH public key.")
             sys.exit(1)
-        log.info("Admin user is %r", user)
-        log.info("Creating generated files directory...")
+        _log.info("Admin user is %s", user)
+        _log.info("Creating generated files directory...")
         generated = util.get_generated_files_dir(config=cfg)
         os.makedirs(generated, exist_ok=True)
-        log.info("Creating repository structure...")
+        _log.info("Creating repository structure...")
         repositories = util.get_repository_dir(cfg)
         os.makedirs(repositories, exist_ok=True)
         admin_repository = os.path.join(repositories, "gitosis-admin.git")
@@ -138,9 +142,9 @@ class Main(app.App):
             pubkey=pubkey,
             user=user,
         )
-        log.info("Running post-update hook...")
+        _log.info("Running post-update hook...")
         os.makedirs(os.path.expanduser("~/.ssh"), mode=0o700, exist_ok=True)
         run_hook.post_update(cfg=cfg, git_dir=admin_repository)
-        log.info("Symlinking ~/.gitosis.conf to repository...")
+        _log.info("Symlinking ~/.gitosis.conf to repository...")
         symlink_config(git_dir=admin_repository)
-        log.info("Done.")
+        _log.info("Done.")

@@ -27,7 +27,7 @@ gitosis-run-hook = "gitosis.run_hook:Main.run"
 gitosis-init = "gitosis.init:Main.run"
 
 [dependency-groups]
-dev = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
+dev = ["mypy>=1.18.2", "pytest>=8.4.2", "pytest-cov>=7.0.0"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/gitosis", "examples", "uv.lock"]
@@ -52,27 +52,44 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = [
   "A",
+  "ANN",
   "ARG",
   "B",
   "C",
+  "DOC",
   "DTZ",
   "E",
   "EM",
+  "EXE",
   "F",
   "FBT",
+  "FLY",
+  "FURB",
+  "G",
   "I",
   "ICN",
   "ISC002",
+  "LOG",
   "N",
+  "PERF",
+  "PIE",
   "PLC",
   "PLE",
   "PLR",
   "PLW",
+  "PT",
+  "PYI",
   "Q",
+  "RET",
+  "RSE",
   "RUF",
   "S",
+  "SIM",
+  "SLOT",
   "T",
+  "TC",
   "TID",
+  "TRY",
   "UP",
   "W",
   "YTT",
@@ -82,12 +99,10 @@ ignore = [
   "PLR2004", # Magic value used in comparison
   "PLW2901", # Redefined loop variable
   "S310",    # Audit URL open for permitted schemes
-  "S317",    # Using xml to parse untrusted data is known to be vulnerable to XML attacks; use defusedxml equivalents
   "TID252",  # Prefer absolute imports over relative imports from parent modules
-  "UP006",   # Use {to} instead of {from} for type annotation
-  "UP035",   # Deprecated import
   "EM101",   # Exceptions must not use strings
   "EM102",   # Exception must not use f-string literal
+  "TRY003",  # Avoid specifying long messages outside the exception class
 ]
 
 [tool.ruff.lint.isort]
@@ -98,7 +113,7 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
-"tests/**/*" = ["PLR2004", "S101", "TID252", "E501"]
+"tests/**/*" = ["ANN", "PLR2004", "S101", "TID252", "E501"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

@@ -2,8 +2,7 @@ import configparser
 import os
 
 from gitosis import gitdaemon
-
-from .util import write_file
+from gitosis.util import write_file
 
 
 def exported(path: str) -> bool:
@@ -14,9 +13,9 @@ def exported(path: str) -> bool:
 
 def test_git_daemon_export_ok_repo_missing(tmpdir):
     # configured but not created yet; before first push
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
@@ -26,9 +25,9 @@ def test_git_daemon_export_ok_repo_missing(tmpdir):
 
 def test_git_daemon_export_ok_repo_missing_parent(tmpdir):
     # configured but not created yet; before first push
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo/bar")
     cfg.set("repo foo/bar", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
@@ -38,9 +37,9 @@ def test_git_daemon_export_ok_repo_missing_parent(tmpdir):
 def test_git_daemon_export_ok_allowed(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
@@ -51,9 +50,9 @@ def test_git_daemon_export_ok_allowed_already(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
     write_file(gitdaemon.export_ok_path(path), "")
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
@@ -64,9 +63,9 @@ def test_git_daemon_export_ok_denied(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
     write_file(gitdaemon.export_ok_path(path), "")
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "daemon", "no")
     gitdaemon.set_export_ok(config=cfg)
@@ -76,9 +75,9 @@ def test_git_daemon_export_ok_denied(tmpdir):
 def test_git_daemon_export_ok_denied_already(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "daemon", "no")
     gitdaemon.set_export_ok(config=cfg)
@@ -90,9 +89,9 @@ def test_git_daemon_export_ok_subdirs(tmpdir):
     os.mkdir(foo)
     path = os.path.join(foo, "bar.git")
     os.mkdir(path)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo/bar")
     cfg.set("repo foo/bar", "daemon", "yes")
     gitdaemon.set_export_ok(config=cfg)
@@ -103,9 +102,9 @@ def test_git_daemon_export_ok_denied_default(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
     write_file(gitdaemon.export_ok_path(path), "")
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     gitdaemon.set_export_ok(config=cfg)
     assert not exported(path)
@@ -118,9 +117,9 @@ def test_git_daemon_export_ok_denied_even_not_configured(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.mkdir(path)
     write_file(gitdaemon.export_ok_path(path), "")
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     gitdaemon.set_export_ok(config=cfg)
     assert not exported(path)
 
@@ -137,9 +136,9 @@ def test_git_daemon_export_ok_allowed_global(tmpdir):
     # try to provoke an invalid allow
     write_file(gitdaemon.export_ok_path(os.path.join(tmpdir, "thud.git")), "")
 
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.set("gitosis", "daemon", "yes")
     cfg.add_section("repo foo")
     cfg.add_section("repo quux")

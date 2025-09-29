@@ -6,7 +6,7 @@ from gitosis import group
 
 
 def test_no_empty_config():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     gen = group.get_membership(config=cfg, user="jdoe")
     assert next(gen) == "all"
     with pytest.raises(StopIteration):
@@ -14,7 +14,7 @@ def test_no_empty_config():
 
 
 def test_no_empty_group():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     gen = group.get_membership(config=cfg, user="jdoe")
     assert next(gen) == "all"
@@ -23,7 +23,7 @@ def test_no_empty_group():
 
 
 def test_no_not_listed():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "wsmith")
     gen = group.get_membership(config=cfg, user="jdoe")
@@ -33,7 +33,7 @@ def test_no_not_listed():
 
 
 def test_yes_simple():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "jdoe")
     gen = group.get_membership(config=cfg, user="jdoe")
@@ -44,7 +44,7 @@ def test_yes_simple():
 
 
 def test_yes_leading():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "jdoe wsmith")
     gen = group.get_membership(config=cfg, user="jdoe")
@@ -55,7 +55,7 @@ def test_yes_leading():
 
 
 def test_yes_trailing():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "wsmith jdoe")
     gen = group.get_membership(config=cfg, user="jdoe")
@@ -66,7 +66,7 @@ def test_yes_trailing():
 
 
 def test_yes_middle():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "wsmith jdoe danny")
     gen = group.get_membership(config=cfg, user="jdoe")
@@ -77,7 +77,7 @@ def test_yes_middle():
 
 
 def test_yes_recurse_one():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "wsmith @smackers")
     cfg.add_section("group smackers")
@@ -91,7 +91,7 @@ def test_yes_recurse_one():
 
 
 def test_yes_recurse_one_ordering():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group smackers")
     cfg.set("group smackers", "members", "danny jdoe")
     cfg.add_section("group hackers")
@@ -105,7 +105,7 @@ def test_yes_recurse_one_ordering():
 
 
 def test_yes_recurse_three():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "wsmith @smackers")
     cfg.add_section("group smackers")
@@ -125,7 +125,7 @@ def test_yes_recurse_three():
 
 
 def test_yes_recurse_junk():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "@notexist @smackers")
     cfg.add_section("group smackers")
@@ -139,7 +139,7 @@ def test_yes_recurse_junk():
 
 
 def test_yes_recurse_loop():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "@smackers")
     cfg.add_section("group smackers")
@@ -153,7 +153,7 @@ def test_yes_recurse_loop():
 
 
 def test_no_recurse_loop():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group hackers")
     cfg.set("group hackers", "members", "@smackers")
     cfg.add_section("group smackers")

@@ -2,8 +2,7 @@ import configparser
 import os
 
 from gitosis import init, repository, run_hook
-
-from .util import read_file
+from gitosis.util import read_file
 
 
 def test_post_update_simple(tmpdir):
@@ -61,7 +60,7 @@ description = blah blah
             ),
         ],
     )
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     cfg.set("gitosis", "repositories", repos)
     generated = os.path.join(tmpdir, "generated")

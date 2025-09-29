@@ -3,12 +3,11 @@ from io import StringIO
 import os
 
 from gitosis import gitweb
-
-from .util import read_file, write_file
+from gitosis.util import read_file, write_file
 
 
 def test_projects_list_empty():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     got = StringIO()
     gitweb.generate_project_list_fp(config=cfg, fp=got)
     assert (
@@ -19,7 +18,7 @@ def test_projects_list_empty():
 
 
 def test_projects_list_repo_denied():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("repo foo/bar")
     got = StringIO()
     gitweb.generate_project_list_fp(config=cfg, fp=got)
@@ -31,7 +30,7 @@ def test_projects_list_repo_denied():
 
 
 def test_projects_list_no_owner():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("repo foo/bar")
     cfg.set("repo foo/bar", "gitweb", "yes")
     got = StringIO()
@@ -45,7 +44,7 @@ foo%2Fbar
 
 
 def test_projects_list_have_owner():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("repo foo/bar")
     cfg.set("repo foo/bar", "gitweb", "yes")
     cfg.set("repo foo/bar", "owner", "John Doe")
@@ -60,7 +59,7 @@ foo%2Fbar John+Doe
 
 
 def test_projects_list_multiple():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     cfg.add_section("repo foo/bar")
     cfg.set("repo foo/bar", "owner", "John Doe")
@@ -73,7 +72,7 @@ def test_projects_list_multiple():
 
 
 def test_projects_list_multiple_global_gitweb_yes():
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     cfg.set("gitosis", "gitweb", "yes")
     cfg.add_section("repo foo/bar")
@@ -92,9 +91,9 @@ def test_projects_list_multiple_global_gitweb_yes():
 def test_projects_list_really_ends_with_git(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.makedirs(path)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "gitweb", "yes")
     got = StringIO()
@@ -110,9 +109,9 @@ foo.git
 def test_projects_list_path(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.makedirs(path)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "gitweb", "yes")
     projects_list = os.path.join(tmpdir, "projects.list")
@@ -129,9 +128,9 @@ foo.git
 def test_description_none(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.makedirs(path)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
@@ -144,9 +143,9 @@ def test_description_none(tmpdir):
 def test_description_repo_missing(tmpdir):
     # configured but not created yet; before first push
     os.path.join(tmpdir, "foo.git")
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
@@ -159,9 +158,9 @@ def test_description_repo_missing(tmpdir):
 def test_description_repo_missing_parent(tmpdir):
     # configured but not created yet; before first push
     os.path.join(tmpdir, "foo/bar.git")
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
@@ -177,9 +176,9 @@ def test_description_default(tmpdir):
         os.path.join(path, "description"),
         "Unnamed repository; edit this file to name it for gitweb.\n",
     )
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(
@@ -196,9 +195,9 @@ def test_description_not_set(tmpdir):
         os.path.join(path, "description"),
         "i was here first\n",
     )
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     gitweb.set_descriptions(
         config=cfg,
@@ -210,9 +209,9 @@ def test_description_not_set(tmpdir):
 def test_description_again(tmpdir):
     path = os.path.join(tmpdir, "foo.git")
     os.makedirs(path, exist_ok=True)
-    cfg = configparser.RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("repo foo")
     cfg.set("repo foo", "description", "foodesc")
     gitweb.set_descriptions(config=cfg)

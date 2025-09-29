@@ -3,12 +3,13 @@ import os
 import re
 import subprocess
 import sys
+import typing as t
 
 
 class GitError(Exception):
     """git failed"""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__doc__}: {': '.join(self.args)}"
 
 
@@ -17,12 +18,11 @@ class GitInitError(Exception):
 
 
 def init(
-    path,
-    template=None,
-    _git=None,
-):
-    """
-    Create a git repository at C{path} (if missing).
+    path: str,
+    template: t.Optional[str] = None,
+    _git: str = "git",
+) -> None:
+    """Create a git repository at C{path} (if missing).
 
     Leading directories of C{path} must exist.
 
@@ -34,9 +34,6 @@ def init(
 
     @type template: str
     """
-    if _git is None:
-        _git = "git"
-
     os.makedirs(path, mode=0o750, exist_ok=True)
     args = [
         _git,
@@ -59,19 +56,15 @@ def init(
 class GitFastImportError(GitError):
     """git fast-import failed"""
 
-    pass
-
 
 def fast_import(
-    git_dir,
-    commit_msg,
-    committer,
-    files,
-    parent=None,
-):
-    """
-    Create an initial commit.
-    """
+    git_dir: str,
+    commit_msg: str,
+    committer: str,
+    files: list[tuple[str, str]],
+    parent: t.Optional[str] = None,
+) -> None:
+    """Create an initial commit."""
     child = subprocess.Popen(
         args=[
             "git",
@@ -85,7 +78,6 @@ def fast_import(
         close_fds=True,
         universal_newlines=True,
     )
-    files = list(files)
     for index, (_, content) in enumerate(files):
         child.stdin.write(f"""\
 blob
@@ -114,8 +106,6 @@ from {parent}
 class GitExportError(GitError):
     """Export failed"""
 
-    pass
-
 
 class GitReadTreeError(GitExportError):
     """git read-tree failed"""
@@ -125,7 +115,7 @@ class GitCheckoutIndexError(GitExportError):
     """git checkout-index failed"""
 
 
-def export(git_dir, path):
+def export(git_dir: str, path: str) -> None:
     try:
         os.mkdir(path)
     except OSError as e:
@@ -146,7 +136,7 @@ def export(git_dir, path):
         raise GitReadTreeError(f"exit status {returncode}")
     # jumping through hoops to be compatible with git versions
     # that don't have --work-tree=
-    env = {}
+    env: dict[str, str] = {}
     env.update(os.environ)
     env["GIT_WORK_TREE"] = "."
     returncode = subprocess.call(
@@ -173,7 +163,7 @@ class GitRevParseError(GitError):
     """rev-parse failed"""
 
 
-def has_initial_commit(git_dir):
+def has_initial_commit(git_dir: str) -> bool:
     child = subprocess.Popen(
         args=[
             "git",
@@ -186,14 +176,13 @@ def has_initial_commit(git_dir):
         close_fds=True,
         universal_newlines=True,
     )
-    got = child.stdout.read()
+    got = child.stdout.read()  # type: ignore
     returncode = child.wait()
     if returncode != 0:
         raise GitRevParseError(f"exit status {returncode}")
     if got == "HEAD\n":
         return False
-    elif re.match("^[0-9a-f]{40}\n$", got):
+    if re.match("^[0-9a-f]{40}\n$", got):
         return True
-    else:
-        msg = f"Unknown git HEAD: {got!r}"
-        raise GitHasInitialCommitError(msg)
+    msg = f"Unknown git HEAD: {got!r}"
+    raise GitHasInitialCommitError(msg)

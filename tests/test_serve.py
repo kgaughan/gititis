@@ -1,4 +1,4 @@
-from configparser import RawConfigParser
+import configparser
 from io import StringIO
 import logging
 import os
@@ -6,13 +6,13 @@ import tempfile
 
 import pytest
 
-from gitosis import repository, serve
+from gitosis import repository, serve, util
 
-from . import util
+from .util import check_mode
 
 
 def test_bad_newline():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(
         serve.CommandMayNotContainNewlineError,
         match="Command may not contain newline",
@@ -25,7 +25,7 @@ def test_bad_newline():
 
 
 def test_bad_dash_noargs():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(serve.UnknownCommandError, match="Unknown command denied"):
         serve.serve(
             cfg=cfg,
@@ -35,7 +35,7 @@ def test_bad_dash_noargs():
 
 
 def test_bad_space_noargs():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(serve.UnknownCommandError, match="Unknown command denied"):
         serve.serve(
             cfg=cfg,
@@ -45,7 +45,7 @@ def test_bad_space_noargs():
 
 
 def test_bad_command():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(serve.UnknownCommandError, match="Unknown command denied"):
         serve.serve(
             cfg=cfg,
@@ -55,7 +55,7 @@ def test_bad_command():
 
 
 def test_bad_unsafe_arguments_not_quoted():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(
         serve.UnsafeArgumentsError,
         match="Arguments to command look dangerous",
@@ -68,7 +68,7 @@ def test_bad_unsafe_arguments_not_quoted():
 
 
 def test_bad_unsafe_arguments_bad_characters():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(
         serve.UnsafeArgumentsError,
         match="Arguments to command look dangerous",
@@ -81,7 +81,7 @@ def test_bad_unsafe_arguments_bad_characters():
 
 
 def test_bad_unsafe_arguments_dotdot():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(
         serve.UnsafeArgumentsError,
         match="Arguments to command look dangerous",
@@ -94,7 +94,7 @@ def test_bad_unsafe_arguments_dotdot():
 
 
 def test_bad_forbidden_command_read_dash():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(serve.ReadAccessDeniedError, match="Repository read access denied"):
         serve.serve(
             cfg=cfg,
@@ -104,7 +104,7 @@ def test_bad_forbidden_command_read_dash():
 
 
 def test_bad_forbidden_command_read_space():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     with pytest.raises(serve.ReadAccessDeniedError, match="Repository read access denied"):
         serve.serve(
             cfg=cfg,
@@ -114,7 +114,7 @@ def test_bad_forbidden_command_read_space():
 
 
 def test_bad_forbidden_command_write_no_access_dash():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     # error message talks about read in an effort to make it more
     # obvious that jdoe doesn't have *even* read access
     with pytest.raises(serve.ReadAccessDeniedError, match="Repository read access denied"):
@@ -126,7 +126,7 @@ def test_bad_forbidden_command_write_no_access_dash():
 
 
 def test_bad_forbidden_command_write_no_access_space():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     # error message talks about read in an effort to make it more
     # obvious that jdoe doesn't have *even* read access
     with pytest.raises(serve.ReadAccessDeniedError, match="Repository read access denied"):
@@ -138,7 +138,7 @@ def test_bad_forbidden_command_write_no_access_space():
 
 
 def test_bad_forbidden_command_write_read_access_dash():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "readonly", "foo")
@@ -151,7 +151,7 @@ def test_bad_forbidden_command_write_read_access_dash():
 
 
 def test_bad_forbidden_command_write_read_access_space():
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "readonly", "foo")
@@ -165,9 +165,9 @@ def test_bad_forbidden_command_write_read_access_space():
 
 def test_simple_read_dash(tmpdir):
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "readonly", "foo")
@@ -181,9 +181,9 @@ def test_simple_read_dash(tmpdir):
 
 def test_simple_read_space(tmpdir):
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "readonly", "foo")
@@ -198,7 +198,7 @@ def test_simple_read_space(tmpdir):
 def test_read_inits_if_needed(tmpdir):
     # a clone of a non-existent repository (but where config
     # authorizes you to do that) will create the repository on the fly
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -221,9 +221,9 @@ def test_read_inits_if_needed(tmpdir):
 
 def test_simple_read_archive(tmpdir):
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "readonly", "foo")
@@ -237,9 +237,9 @@ def test_simple_read_archive(tmpdir):
 
 def test_simple_write_dash(tmpdir):
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "writable", "foo")
@@ -253,9 +253,9 @@ def test_simple_write_dash(tmpdir):
 
 def test_simple_write_space(tmpdir):
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "writable", "foo")
@@ -270,7 +270,7 @@ def test_simple_write_space(tmpdir):
 def test_push_inits_if_needed(tmpdir):
     # a push to a non-existent repository (but where config authorizes
     # you to do that) will create the repository on the fly
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -293,7 +293,7 @@ def test_push_inits_if_needed(tmpdir):
 def test_push_inits_if_needed_have_extension(tmpdir):
     # a push to a non-existent repository (but where config authorizes
     # you to do that) will create the repository on the fly
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -314,7 +314,7 @@ def test_push_inits_if_needed_have_extension(tmpdir):
 
 
 def test_push_inits_subdir_parent_missing(tmpdir):
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -332,13 +332,13 @@ def test_push_inits_subdir_parent_missing(tmpdir):
     )
     assert os.listdir(repositories) == ["foo"]
     foo = os.path.join(repositories, "foo")
-    util.check_mode(foo, 0o750, is_dir=True)
+    check_mode(foo, 0o750, is_dir=True)
     assert os.listdir(foo) == ["bar.git"]
     assert os.path.isfile(os.path.join(repositories, "foo", "bar.git", "HEAD"))
 
 
 def test_push_inits_subdir_parent_exists(tmpdir):
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -358,13 +358,13 @@ def test_push_inits_subdir_parent_exists(tmpdir):
         command="git-receive-pack 'foo/bar.git'",
     )
     assert os.listdir(repositories) == ["foo"]
-    util.check_mode(foo, 0o751, is_dir=True)
+    check_mode(foo, 0o751, is_dir=True)
     assert os.listdir(foo) == ["bar.git"]
     assert os.path.isfile(os.path.join(repositories, "foo", "bar.git", "HEAD"))
 
 
 def test_push_inits_if_needed_exists_with_extension(tmpdir):
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -389,7 +389,7 @@ def test_push_inits_if_needed_exists_with_extension(tmpdir):
 def test_push_inits_no_stdout_spam(tmpdir):
     # git init has a tendency to spew to stdout, and that confuses
     # e.g. a git push
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -422,7 +422,7 @@ def test_push_inits_no_stdout_spam(tmpdir):
 
 
 def test_push_inits_sets_description(tmpdir):
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -448,7 +448,7 @@ def test_push_inits_sets_description(tmpdir):
 
 
 def test_push_inits_updates_projects_list(tmpdir):
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -475,7 +475,7 @@ def test_push_inits_updates_projects_list(tmpdir):
 
 
 def test_push_inits_sets_export_ok(tmpdir):
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
     repositories = os.path.join(tmpdir, "repositories")
     os.mkdir(repositories)
@@ -505,9 +505,9 @@ def test_absolute(tmpdir):
     # relative paths; you'll never really want absolute paths via
     # gitosis, anyway.
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "readonly", "foo")
@@ -521,9 +521,9 @@ def test_absolute(tmpdir):
 
 def test_typo_writeable(tmpdir):
     repository.init(os.path.join(tmpdir, "foo.git"))
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.add_section("gitosis")
-    cfg.set("gitosis", "repositories", tmpdir)
+    cfg.set("gitosis", "repositories", str(tmpdir))
     cfg.add_section("group foo")
     cfg.set("group foo", "members", "jdoe")
     cfg.set("group foo", "writeable", "foo")
@@ -541,4 +541,4 @@ def test_typo_writeable(tmpdir):
         log.removeHandler(handler)
     assert got == f"git-receive-pack '{tmpdir}/foo.git'"
     handler.flush()
-    assert buf.getvalue() == "Repository 'foo' config has typo \"writeable\", shou" + 'ld be "writable"\n'
+    assert buf.getvalue() == 'Repository \'foo\' config has typo "writeable", should be "writable"\n'

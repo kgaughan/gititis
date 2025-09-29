@@ -1,3 +1,2 @@
-"""
-Git templates for use by gitosis-init.
+"""Git templates for use by gitosis-init.
 """

@@ -1,25 +1,52 @@
+from collections import abc
 import configparser
+import contextlib
 import os
+import secrets
+import typing as t
 
 
-def get_repository_dir(config: configparser.RawConfigParser) -> str:
-    repositories = os.path.expanduser("~")
+@contextlib.contextmanager
+def safe_open_write(path: str) -> abc.Iterator[t.IO]:
+    tmp = f"{path}.{secrets.token_hex(16)}.tmp"
+    with open(tmp, "w") as fp:
+        yield fp
+        os.fsync(fp)
+    os.rename(tmp, path)
+
+
+def write_file(path: str, contents: str) -> None:
+    with safe_open_write(path) as fp:
+        fp.write(contents)
+
+
+def read_file(path: str) -> str:
+    with open(path) as f:
+        return f.read()
+
+
+def get(cfg: configparser.ConfigParser, section: str, key: str, *, default=None):  # noqa: ANN001, ANN201
     try:
-        path = config.get("gitosis", "repositories")
+        return cfg.get(section, key)
     except (configparser.NoSectionError, configparser.NoOptionError):
-        return os.path.join(repositories, "repositories")
-    return os.path.join(repositories, path)
+        return default
 
 
-def get_generated_files_dir(config: configparser.RawConfigParser) -> str:
+def get_boolean(cfg: configparser.ConfigParser, section: str, key: str, *, default: bool) -> bool:
     try:
-        return config.get("gitosis", "generate-files-in")
+        return cfg.getboolean(section, key)
     except (configparser.NoSectionError, configparser.NoOptionError):
-        return os.path.expanduser("~/gitosis")
+        return default
 
 
-def get_ssh_authorized_keys_path(config: configparser.RawConfigParser) -> str:
-    try:
-        return config.get("gitosis", "ssh-authorized-keys-path")
-    except (configparser.NoSectionError, configparser.NoOptionError):
-        return os.path.expanduser("~/.ssh/authorized_keys")
+def get_repository_dir(config: configparser.ConfigParser) -> str:
+    path = get(config, "gitosis", "repositories", default="repositories")
+    return os.path.join(os.path.expanduser("~"), path)  # type: ignore
+
+
+def get_generated_files_dir(config: configparser.ConfigParser) -> str:
+    return get(config, "gitosis", "generate-files-in", default=os.path.expanduser("~/gitosis"))  # type: ignore
+
+
+def get_ssh_authorized_keys_path(config: configparser.ConfigParser) -> str:
+    return get(config, "gitosis", "ssh-authorized-keys-path", default=os.path.expanduser("~/.ssh/authorized_keys"))  # type: ignore

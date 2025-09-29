@@ -1,5 +1,4 @@
-"""
-Generate ``gitweb`` project list based on ``gitosis.conf``.
+"""Generate ``gitweb`` project list based on ``gitosis.conf``.
 
 To plug this into ``gitweb``, you have two choices.
 
@@ -28,36 +27,25 @@ To plug this into ``gitweb``, you have two choices.
 import configparser
 import logging
 import os
+import typing as t
 from urllib.parse import quote_plus
 
 from gitosis import util
 
-
-def _escape_filename(s):
-    s = s.replace("\\", "\\\\")
-    s = s.replace("$", "\\$")
-    s = s.replace('"', '\\"')
-    return s
+_log = logging.getLogger(__name__)
 
 
-def generate_project_list_fp(config, fp):
-    """
-    Generate projects list for ``gitweb``.
+def generate_project_list_fp(config: configparser.ConfigParser, fp: t.IO) -> None:
+    """Generate projects list for ``gitweb``.
 
     :param config: configuration to read projects from
-    :type config: RawConfigParser
 
     :param fp: writable for ``projects.list``
     :type fp: (file-like, anything with ``.write(data)``)
     """
-    log = logging.getLogger("gitosis.gitweb.generate_projects_list")
-
     repositories = util.get_repository_dir(config)
 
-    try:
-        global_enable = config.getboolean("gitosis", "gitweb")
-    except (configparser.NoSectionError, configparser.NoOptionError):
-        global_enable = False
+    global_enable = util.get_boolean(config, "gitosis", "gitweb", default=False)
 
     for section in config.sections():
         parts = section.split(None, 1)
@@ -67,11 +55,7 @@ def generate_project_list_fp(config, fp):
         if not parts:
             continue
 
-        try:
-            enable = config.getboolean(section, "gitweb")
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            enable = global_enable
-
+        enable = util.get_boolean(config, section, "gitweb", default=global_enable)
         if not enable:
             continue
 
@@ -82,59 +66,39 @@ def generate_project_list_fp(config, fp):
             if os.path.exists(os.path.join(repositories, namedotgit)):
                 name = namedotgit
             else:
-                log.warning(f"Cannot find {name!r} in {repositories!r}")
+                _log.warning("Cannot find '%s' in '%s'", name, repositories)
 
         response = [name]
-        try:
-            owner = config.get(section, "owner")
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            pass
-        else:
+        owner = util.get(config, section, "owner")
+        if owner is not None:
             response.append(owner)
 
         line = " ".join(quote_plus(s) for s in response)
         print(line, file=fp)
 
 
-def generate_project_list(config, path):
-    """
-    Generate projects list for ``gitweb``.
+def generate_project_list(config: configparser.ConfigParser, path: str) -> None:
+    """Generate projects list for ``gitweb``.
 
     :param config: configuration to read projects from
-    :type config: RawConfigParser
 
     :param path: path to write projects list to
-    :type path: str
     """
-    tmp = f"{path}.{os.getpid()}.tmp"
-
-    with open(tmp, "w") as f:
-        generate_project_list_fp(config=config, fp=f)
-
-    os.rename(tmp, path)
+    with util.safe_open_write(path) as fp:
+        generate_project_list_fp(config=config, fp=fp)
 
 
-def set_descriptions(config):
-    """
-    Set descriptions for gitweb use.
-    """
-    log = logging.getLogger("gitosis.gitweb.set_descriptions")
-
+def set_descriptions(config: configparser.ConfigParser) -> None:
+    """Set descriptions for gitweb use."""
     repositories = util.get_repository_dir(config)
 
     for section in config.sections():
         parts = section.split(None, 1)
         type_ = parts.pop(0)
-        if type_ != "repo":
-            continue
-        if not parts:
+        if type_ != "repo" or not parts:
             continue
 
-        try:
-            description = config.get(section, "description")
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            continue
-
+        description = util.get(config, section, "description")
         if not description:
             continue
 
@@ -145,7 +109,7 @@ def set_descriptions(config):
             if os.path.exists(os.path.join(repositories, namedotgit)):
                 name = namedotgit
             else:
-                log.warning(f"Cannot find {name!r} in {repositories!r}")
+                _log.warning("Cannot find '%s' in '%s'", name, repositories)
                 continue
 
         path = os.path.join(
@@ -153,7 +117,5 @@ def set_descriptions(config):
             name,
             "description",
         )
-        tmp = f"{path}.{os.getpid()}.tmp"
-        with open(tmp, "w") as f:
-            print(description, file=f)
-        os.rename(tmp, path)
+        with util.safe_open_write(path) as fp:
+            print(description, file=fp)

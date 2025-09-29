@@ -1,11 +1,11 @@
-from configparser import RawConfigParser
+import configparser
 import os
 
 import pytest
 
-from gitosis import init, repository
+from gitosis import init, repository, util
 
-from . import util
+from .util import check_mode
 
 
 def test_ssh_extract_user_simple():
@@ -131,7 +131,7 @@ def test_init_admin_repository(tmpdir):
         "hooks",
         "post-update",
     )
-    util.check_mode(hook, 0o755, is_file=True)
+    check_mode(hook, 0o755, is_file=True)
     got = util.read_file(hook).splitlines()
     assert "gitosis-run-hook post-update" in got
     export_dir = os.path.join(tmpdir, "export")
@@ -145,7 +145,7 @@ def test_init_admin_repository(tmpdir):
     got = util.read_file(os.path.join(export_dir, "gitosis.conf"))
     got = got.splitlines()[0]
     assert got == "[gitosis]"
-    cfg = RawConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.read(os.path.join(export_dir, "gitosis.conf"))
     assert sorted(cfg.sections()) == sorted(
         [

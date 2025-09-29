@@ -1,17 +1,18 @@
-"""
-Enforce git-shell to only serve allowed by access control policy.
+"""Enforce git-shell to only serve allowed by access control policy.
 directory. The client should refer to them without any extra directory
 prefix. Repository names are forced to match ALLOW_RE.
 """
 
+import configparser
 import logging
+import optparse
 import os
 import re
 import sys
 
 from gitosis import access, app, gitdaemon, gitweb, repository, util
 
-log = logging.getLogger("gitosis.serve")
+_log = logging.getLogger(__name__)
 
 ALLOW_RE = re.compile("^'/*(?P<path>[a-zA-Z0-9][a-zA-Z0-9@._-]*(/[a-zA-Z0-9][a-zA-Z0-9@._-]*)*)'$")
 
@@ -31,7 +32,7 @@ COMMANDS_WRITE = [
 class ServingError(Exception):
     """Serving error"""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__doc__}"
 
 
@@ -60,19 +61,18 @@ class ReadAccessDeniedError(AccessDeniedError):
 
 
 def serve(
-    cfg,
-    user,
-    command,
-):
+    cfg: configparser.ConfigParser,
+    user: str,
+    command: str,
+) -> str:
     if "\n" in command:
-        raise CommandMayNotContainNewlineError()
+        raise CommandMayNotContainNewlineError
 
     try:
         verb, args = command.split(None, 1)
     except ValueError as e:
-        # all known "git-foo" commands take one argument; improve
-        # if/when needed
-        raise UnknownCommandError() from e
+        # all known "git-foo" commands take one argument; improve if/when needed
+        raise UnknownCommandError from e
 
     if verb == "git":
         try:
@@ -80,15 +80,15 @@ def serve(
         except ValueError as e:
             # all known "git foo" commands take one argument; improve
             # if/when needed
-            raise UnknownCommandError() from e
+            raise UnknownCommandError from e
         verb = f"{verb} {subverb}"
 
     if verb not in COMMANDS_WRITE and verb not in COMMANDS_READONLY:
-        raise UnknownCommandError()
+        raise UnknownCommandError
 
     match = ALLOW_RE.match(args)
     if match is None:
-        raise UnsafeArgumentsError()
+        raise UnsafeArgumentsError
 
     path = match.group("path")
 
@@ -100,22 +100,16 @@ def serve(
         # misspelling
         newpath = access.have_access(config=cfg, user=user, mode="writeable", path=path)
         if newpath is not None:
-            log.warning(
-                'Repository %r config has typo "writeable", ' + 'should be "writable"',
-                path,
-            )
+            _log.warning('Repository "%s" config has typo: "writeable", should be "writable"', path)
 
     if newpath is None:
         # didn't have write access
-
         newpath = access.have_access(config=cfg, user=user, mode="readonly", path=path)
-
         if newpath is None:
-            raise ReadAccessDeniedError()
-
+            raise ReadAccessDeniedError
         if verb in COMMANDS_WRITE:
             # didn't have write access and tried to write
-            raise WriteAccessDeniedError()
+            raise WriteAccessDeniedError
 
     (topdir, relpath) = newpath
     repopath = f"{relpath}.git"
@@ -132,46 +126,46 @@ def serve(
             os.makedirs(p, mode=0o750, exist_ok=True)
 
         repository.init(path=fullpath)
-        gitweb.set_descriptions(
-            config=cfg,
-        )
+        gitweb.set_descriptions(config=cfg)
         generated = util.get_generated_files_dir(config=cfg)
         gitweb.generate_project_list(
             config=cfg,
             path=os.path.join(generated, "projects.list"),
         )
-        gitdaemon.set_export_ok(
-            config=cfg,
-        )
+        gitdaemon.set_export_ok(config=cfg)
 
     # put the verb back together with the new path
-    newcmd = f"{verb} '{fullpath}'"
-    return newcmd
+    return f"{verb} '{fullpath}'"
 
 
 class Main(app.App):
-    def create_parser(self):
+    def create_parser(self) -> optparse.OptionParser:
         parser = super().create_parser()
         parser.set_usage("%prog [OPTS] USER")
         parser.set_description("Allow restricted git operations under DIR")
         return parser
 
-    def handle_args(self, parser, cfg, options, args):  # noqa: ARG002
+    def handle_args(
+        self,
+        parser: optparse.OptionParser,
+        cfg: configparser.ConfigParser,
+        options: optparse.Values,  # noqa: ARG002
+        args: list[str],
+    ) -> None:
         try:
             (user,) = args
         except ValueError:
             parser.error("Missing argument USER.")
-            user = None
+            user = "nobody"
 
-        main_log = logging.getLogger("gitosis.serve.main")
         os.umask(0o022)
 
         cmd = os.environ.get("SSH_ORIGINAL_COMMAND", None)
         if cmd is None:
-            main_log.error("Need SSH_ORIGINAL_COMMAND in environment.")
+            _log.error("Need SSH_ORIGINAL_COMMAND in environment.")
             sys.exit(1)
 
-        main_log.debug(f"Got command {cmd!r}")
+        _log.debug("Got command: %s", cmd)
 
         os.chdir(os.path.expanduser("~"))
 
@@ -182,11 +176,11 @@ class Main(app.App):
                 command=cmd,
             )
         except ServingError as e:
-            main_log.error("%s", e)
+            _log.error("%s", e)
             sys.exit(1)
 
-        main_log.debug("Serving %s", newcmd)
+        _log.debug("Serving %s", newcmd)
         os.environ["GITOSIS_USER"] = user
         os.execvp("git", ["git", "shell", "-c", newcmd])
-        main_log.error("Cannot execute git-shell.")
+        _log.error("Cannot execute git-shell.")
         sys.exit(1)

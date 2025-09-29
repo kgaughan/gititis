@@ -1,12 +1,15 @@
+from collections import abc
 import configparser
 import logging
+
+from gitosis import util
+
+_log = logging.getLogger(__name__)
 
 GROUP_PREFIX = "group "
 
 
-def _get_membership(config, user, seen):
-    log = logging.getLogger("gitosis.group.getMembership")
-
+def _get_membership(config: configparser.ConfigParser, user: str, seen: set[str]) -> abc.Iterator[str]:
     for section in config.sections():
         if not section.startswith(GROUP_PREFIX):
             continue
@@ -14,18 +17,13 @@ def _get_membership(config, user, seen):
         if group in seen:
             continue
 
-        try:
-            members = config.get(section, "members")
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            members = []
-        else:
-            members = members.split()
+        members = frozenset(util.get(config, section, "members", default="").split())  # type: ignore
 
         # @all is the only group where membership needs to be
         # bootstrapped like this, anything else gets started from the
         # username itself
         if user in members or "@all" in members:
-            log.debug(f"found {user!r} in {group!r}")
+            _log.debug("found %s in %s", user, group)
             seen.add(group)
             yield group
 
@@ -36,17 +34,9 @@ def _get_membership(config, user, seen):
             )
 
 
-def get_membership(config, user):
-    """
-    Generate groups ``user`` is member of, according to ``config``
-
-    :type config: RawConfigParser
-    :type user: str
-    :param _seen: internal use only
-    """
-
-    seen = set()
+def get_membership(config: configparser.ConfigParser, user: str) -> abc.Iterator[str]:
+    """Generate groups ``user`` is member of, according to ``config``."""
+    seen: set[str] = set()
     yield from _get_membership(config, user, seen)
-
     # everyone is always a member of group "all"
     yield "all"
