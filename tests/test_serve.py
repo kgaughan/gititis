@@ -541,4 +541,4 @@ def test_typo_writeable(tmpdir):
         log.removeHandler(handler)
     assert got == f"git-receive-pack '{tmpdir}/foo.git'"
     handler.flush()
-    assert buf.getvalue() == 'Repository \'foo\' config has typo "writeable", should be "writable"\n'
+    assert buf.getvalue() == 'Repository "foo" config has typo: "writeable", should be "writable"\n'

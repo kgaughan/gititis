@@ -71,6 +71,7 @@ def fast_import(
             "--git-dir=.",
             "fast-import",
             "--quiet",
+            "--force",
             "--date-format=now",
         ],
         cwd=git_dir,
