@@ -1,7 +1,7 @@
 *.py[co]
-/.coverage
+.coverage
 /.tox
 /.venv
 _version.py
 .*.sw?
-/tests/results.xml
+results.xml

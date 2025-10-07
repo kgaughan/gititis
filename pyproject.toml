@@ -116,7 +116,7 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --cov=src/gitosis --junitxml=tests/results.xml --cov-report html"
+addopts = "-ra --cov=gitosis --junitxml=results.xml --cov-report html"
 junit_logging = "out-err"
 junit_family = "xunit2"
 
