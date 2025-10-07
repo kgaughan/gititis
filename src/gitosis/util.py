@@ -1,9 +1,13 @@
 from collections import abc
 import configparser
 import contextlib
+import logging
 import os
 import secrets
+import shutil
 import typing as t
+
+_log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
@@ -50,3 +54,10 @@ def get_generated_files_dir(config: configparser.ConfigParser) -> str:
 
 def get_ssh_authorized_keys_path(config: configparser.ConfigParser) -> str:
     return get(config, "gitosis", "ssh-authorized-keys-path", default=os.path.expanduser("~/.ssh/authorized_keys"))  # type: ignore
+
+
+def find_git() -> t.Optional[str]:
+    git_path = os.environ.get("GITOSIS_GIT")
+    if git_path is None:
+        return shutil.which("git")
+    return git_path

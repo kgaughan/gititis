@@ -67,7 +67,7 @@ def filter_authorized_keys(fp: t.IO) -> abc.Iterator[str]:
 def write_authorized_keys(path: str, keydir: str) -> None:
     tmp = f"{path}.{secrets.token_hex(16)}.tmp"
     try:
-        in_ = open(path)
+        in_ = open(path)  # noqa: SIM115
     except OSError as e:
         if e.errno == errno.ENOENT:
             in_ = None

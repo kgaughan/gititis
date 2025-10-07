@@ -60,6 +60,15 @@ class ReadAccessDeniedError(AccessDeniedError):
     """Repository read access denied"""
 
 
+def split_head(cmd: str) -> tuple[str, str]:
+    try:
+        head, tail = cmd.split(maxsplit=1)
+    except ValueError as e:
+        raise UnknownCommandError from e
+    else:
+        return (head, tail)
+
+
 def serve(
     cfg: configparser.ConfigParser,
     user: str,
@@ -68,19 +77,12 @@ def serve(
     if "\n" in command:
         raise CommandMayNotContainNewlineError
 
-    try:
-        verb, args = command.split(None, 1)
-    except ValueError as e:
-        # all known "git-foo" commands take one argument; improve if/when needed
-        raise UnknownCommandError from e
+    # all known "git-foo" commands take one argument; improve if/when needed
+    verb, args = split_head(command)
 
     if verb == "git":
-        try:
-            subverb, args = args.split(None, 1)
-        except ValueError as e:
-            # all known "git foo" commands take one argument; improve
-            # if/when needed
-            raise UnknownCommandError from e
+        # all known "git foo" commands take one argument; improve if/when needed
+        subverb, args = split_head(args)
         verb = f"{verb} {subverb}"
 
     if verb not in COMMANDS_WRITE and verb not in COMMANDS_READONLY:
@@ -181,6 +183,12 @@ class Main(app.App):
 
         _log.debug("Serving %s", newcmd)
         os.environ["GITOSIS_USER"] = user
-        os.execvp("git", ["git", "shell", "-c", newcmd])
+        git_path = util.find_git()
+        if git_path is None:
+            _log.error("Cannot find git")
+            sys.exit(1)
+        _log.debug("Using %s as git", git_path)
+
+        os.execvp(git_path, ["git", "shell", "-c", newcmd])  # noqa: S606
         _log.error("Cannot execute git-shell.")
         sys.exit(1)

@@ -56,7 +56,6 @@ select = [
   "ARG",
   "B",
   "C",
-  "DOC",
   "DTZ",
   "E",
   "EM",
