@@ -69,7 +69,7 @@ def split_head(cmd: str) -> tuple[str, str]:
         return (head, tail)
 
 
-def serve(
+def serve(  # noqa: C901
     cfg: configparser.ConfigParser,
     user: str,
     command: str,
